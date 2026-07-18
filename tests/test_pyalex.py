@@ -534,6 +534,7 @@ def test_premium_api():
     pyalex.config.api_key = None
 
 
+@requires_api_key(reason="OpenAlex requires authentication for content downloads")
 def test_work_pdf_and_tei_download(tmpdir):
     """Test downloading PDF and TEI content for a Work.
 
@@ -542,8 +543,6 @@ def test_work_pdf_and_tei_download(tmpdir):
     2. PDF and TEI objects have correct URLs
     3. PDF and TEI content can be retrieved and downloaded to files
     """
-
-    pyalex.config.api_key = os.environ["OPENALEX_API_KEY"]
 
     # Get a work
     work = Works()["W4412002745"]
