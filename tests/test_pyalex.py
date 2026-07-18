@@ -617,3 +617,38 @@ def test_similar_per_page():
     """Test similar() with per_page parameter."""
     w = Works().similar("deep learning").get(per_page=10)
     assert len(w) <= 10
+
+
+# Tests for HTTP response headers exposure
+
+
+def test_response_headers_singleton():
+    """Singleton lookups expose the HTTP response headers.
+
+    Headers carry OpenAlex's rate-limit credit accounting (e.g.
+    ``x-ratelimit-remaining``, ``x-ratelimit-prepaid-remaining-usd``), so
+    callers can read the authoritative budget from the same request.
+    """
+    # Singleton lookups work unauthenticated; pin the key off so a leaked
+    # config from a sibling test can't turn this into a 401.
+    original_api_key = pyalex.config.api_key
+    pyalex.config.api_key = None
+    try:
+        w = Works()["W4238809453"]
+    finally:
+        pyalex.config.api_key = original_api_key
+
+    assert w.headers is not None
+    # requests exposes headers case-insensitively.
+    assert w.headers.get("content-type")
+    assert w.headers.get("x-ratelimit-remaining") is not None
+
+
+@requires_api_key(reason="OpenAlex requires authentication for filter queries")
+def test_response_headers_list():
+    """List responses expose the HTTP response headers."""
+    r = Works().filter(publication_year=2020).get()
+
+    assert r.headers is not None
+    assert r.headers.get("content-type")
+    assert r.headers.get("x-ratelimit-remaining") is not None

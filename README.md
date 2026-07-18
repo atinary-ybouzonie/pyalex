@@ -246,6 +246,20 @@ print(topics.meta)
 {'count': 65073, 'db_response_time_ms': 16, 'page': 1, 'per_page': 25}
 ```
 
+The HTTP response headers are exposed on the result via `.headers`. They carry
+OpenAlex's rate-limit credit accounting, so you can read how much of your daily
+budget a request consumed and how much remains:
+
+```python
+works = Works().filter(publication_year=2020).get()
+
+works.headers["x-ratelimit-cost-usd"]              # cost of this request
+works.headers["x-ratelimit-remaining"]             # credits left today
+works.headers["x-ratelimit-prepaid-remaining-usd"] # prepaid balance remaining
+```
+
+`.headers` is also set on single entities (e.g. `Works()["W2741809807"].headers`).
+
 #### Filter records
 
 ```python
