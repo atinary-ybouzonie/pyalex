@@ -288,19 +288,24 @@ class OpenAlexResponseList(list):
     Attributes:
         meta: a dictionary with metadata about the results
         resource_class: the class to use for each entity in the results
+        headers: the HTTP response headers, exposing e.g. the ``x-ratelimit-*``
+            credit headers OpenAlex returns (``None`` when built without a
+            response, such as offline construction)
 
     Arguments:
         results: a list of OpenAlexEntity objects
         meta: a dictionary with metadata about the results
         resource_class: the class to use for each entity in the results
+        headers: the HTTP response headers from the API request
 
     Returns:
         a OpenAlexResponseList object
     """
 
-    def __init__(self, results, meta=None, resource_class=OpenAlexEntity):
+    def __init__(self, results, meta=None, resource_class=OpenAlexEntity, headers=None):
         self.resource_class = resource_class
         self.meta = meta
+        self.headers = headers
 
         super().__init__([resource_class(ent) for ent in results])
 
@@ -542,14 +547,22 @@ class BaseOpenAlex:
 
         if self.params and "group-by" in self.params:
             return OpenAlexResponseList(
-                res_json["group_by"], res_json["meta"], self.resource_class
+                res_json["group_by"],
+                res_json["meta"],
+                self.resource_class,
+                headers=res.headers,
             )
         elif "results" in res_json:
             return OpenAlexResponseList(
-                res_json["results"], res_json["meta"], self.resource_class
+                res_json["results"],
+                res_json["meta"],
+                self.resource_class,
+                headers=res.headers,
             )
         elif "id" in res_json:
-            return self.resource_class(res_json)
+            entity = self.resource_class(res_json)
+            entity.headers = res.headers
+            return entity
         else:
             raise ValueError("Unknown response format")
 
@@ -991,7 +1004,9 @@ class Work(OpenAlexEntity):
         res.raise_for_status()
         results = res.json()
 
-        resp_list = OpenAlexResponseList(results["ngrams"], results["meta"])
+        resp_list = OpenAlexResponseList(
+            results["ngrams"], results["meta"], headers=res.headers
+        )
 
         if return_meta:
             warnings.warn(
